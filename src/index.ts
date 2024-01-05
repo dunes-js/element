@@ -111,8 +111,10 @@ export function element(n: keyof HTMLElementTagNameMap, attr: any = {}, ...desc:
   return buildCreated(elem);
 }
 
+type ContainerChild = Container<any, any> | HTMLElement | Created<HTMLElement> | [HTMLElement | Created<HTMLElement>, ContainerDecl];
+
 type ContainerDecl = {
-  [key: string]: HTMLElement | [HTMLElement, ContainerDecl]  | Container<any, any>
+  [key: string]: ContainerChild
 }
 
 type ContainerState = {
@@ -145,21 +147,17 @@ export function isContainer<E extends HTMLElement, Decl extends ContainerDecl, S
 }
 
 function getContainerProperties(d: ContainerDecl):
-{[key: string]: Container<HTMLElement, ContainerDecl> | Created<HTMLElement>}
+{[key: string]: Container<HTMLElement, ContainerDecl, ContainerState> | Created<HTMLElement>}
 {
   return Object.fromEntries(Object.entries(d).map(
     ([k, v]) => {
       if (Array.isArray(v))
       {
-        return [k, Container(...v)];
-      }
-      else if (isContainer(v))
-      {
-        return [k, v];
+        return [k, Container<any, any>(...v)];
       }
       else
       {
-        return [k, v as HTMLElement];
+        return [k, v as HTMLElement | Created<HTMLElement>];
       }
     }
   ));
