@@ -112,12 +112,23 @@ export function element(n: keyof HTMLElementTagNameMap, attr: any = {}, ...desc:
 }
 
 type ContainerDecl = {
-  [key: string]: HTMLElement | [HTMLElement, ContainerDecl]
+  [key: string]: HTMLElement | [HTMLElement, ContainerDecl]  | Container<any, any>
 }
 
-type Container<E extends HTMLElement, Decl extends ContainerDecl> = {
+type ContainerState = {
+  [key: string]: any
+}
+
+type Container<
+  E extends HTMLElement, 
+  Decl extends ContainerDecl,
+  State extends ContainerState = ContainerState
+> = {
   [key in keyof Decl]:
   (
+    Decl[key] extends [infer E extends HTMLElement, infer D extends ContainerDecl, infer S extends ContainerState]
+    ? Container<E, D, S>
+    : 
     Decl[key] extends [infer E extends HTMLElement, infer D extends ContainerDecl]
     ? Container<E, D>
     : Decl[key]
@@ -125,6 +136,12 @@ type Container<E extends HTMLElement, Decl extends ContainerDecl> = {
 } & {
   _: E
   _place(e: HTMLElement | Document): void;
+  _state: State
+}
+
+export function isContainer<E extends HTMLElement, Decl extends ContainerDecl, State extends ContainerState>(x: unknown): x is Container<E, Decl, State>
+{
+  return !!x && typeof x == "object" && "__type" in x && x.__type === CONTAINER_TYPE;
 }
 
 function getContainerProperties(d: ContainerDecl):
@@ -136,19 +153,31 @@ function getContainerProperties(d: ContainerDecl):
       {
         return [k, Container(...v)];
       }
-      return [k, v];
+      else if (isContainer(v))
+      {
+        return [k, v];
+      }
+      else
+      {
+        return [k, v as HTMLElement];
+      }
     }
   ));
 }
 
-export function Container<T extends ContainerDecl, E extends HTMLElement = HTMLElement>(
+const CONTAINER_TYPE = Symbol("container");
+
+export function Container<T extends ContainerDecl, E extends HTMLElement = HTMLElement, S extends ContainerState = ContainerState>(
   _: E,
-  d: T
-): Container<E, T>
+  d: T,
+  _state: S = {} as S
+): Container<E, T, S>
 {
   return {
     ...getContainerProperties(d),
+    __type: CONTAINER_TYPE,
     _,
+    _state,
     _place(e)
     {
       for (const [n, ch] of Object.entries(this))
@@ -166,7 +195,7 @@ export function Container<T extends ContainerDecl, E extends HTMLElement = HTMLE
       }
       e.append(this._);
     }
-  } as Container<E, T>;
+  } as Container<E, T, S>;
 }
 
 export function css(props: ElementStyles): string
