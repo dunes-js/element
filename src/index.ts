@@ -12,16 +12,26 @@ type ElementAttr<H extends HTMLElement> = {
       ? ElementFunction<H, Exclude<H[Key], string | null>>
       : never
     )
-    : (
-      /*H[Key] extends string
-      ? (
-        H[Key] extends `${infer X extends number}`
-        ? (X | H[Key])
-        : H[Key]
-      )
-      : */H[Key]
-    )
-  );
+    :
+    Key extends "style"
+    ? (ElementStyles | string)
+    :
+    Key extends ("step" | "min" | "max")
+    ? (string | number)
+    :
+    Key extends ("value" | "defaultValue")
+    ? (boolean | string | number)
+    : (H[Key])
+  ) 
+  | null;
+}
+
+type OmitCSS = Omit<
+  CSSStyleDeclaration, "length" | "parentRule"
+>;
+
+type ElementStyles = {
+  [Key in keyof OmitCSS]: OmitCSS[Key]
 }
 
 type Created<H extends HTMLElement> = H & {
@@ -59,9 +69,26 @@ export function element(n: keyof HTMLElementTagNameMap, attr: any = {}, ...desc:
 
   for (const [name, value] of Object.entries(attr))
   {
+    if (value === null || value === undefined) continue;
     if (typeof value == "function" && (name as string).startsWith("on"))
     {
       elem.addEventListener((name as string).slice(2), value.bind(elem));
+    }
+    if (name == "style")
+    {
+      if (typeof value == "string")
+      {
+        elem.setAttribute((name as string), value);
+      }
+      else if (typeof value == "object")
+      {
+        for (const [pName, pValue] of Object.entries(value) as [
+          keyof ElementStyles, ElementStyles[keyof ElementStyles]
+        ][])
+        {
+          elem.style[pName] = pValue as any;
+        }
+      }
     }
     else
     {
@@ -140,4 +167,19 @@ export function Container<T extends ContainerDecl, E extends HTMLElement = HTMLE
       e.append(this._);
     }
   } as Container<E, T>;
+}
+
+export function css(props: ElementStyles): string
+{
+  let str = "";
+  for (const [name, value] of Object.entries(props) as [string, any][])
+  {
+    const propName = name
+    .split(/(?=[A-Z])/)
+    .map(s => s.toLowerCase())
+    .join("-");
+
+    str += `${propName}: ${value};`
+  }
+  return str;
 }
