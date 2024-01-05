@@ -27,7 +27,7 @@ type ElementAttr<H extends HTMLElement> = {
 }
 
 type OmitCSS = Omit<
-  CSSStyleDeclaration, "length" | "parentRule"
+  Partial<CSSStyleDeclaration>, "length" | "parentRule"
 >;
 
 type ElementStyles = {
