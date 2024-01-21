@@ -46,6 +46,7 @@ function buildCreated<H extends HTMLElement>(elem: H)
   {
     for (const child of args)
     {
+      if (!child) continue;
       if (child && child.constructor.name.startsWith("HTML"))
       {
         this.append(child as HTMLElement);
@@ -95,20 +96,10 @@ export function element(n: keyof HTMLElementTagNameMap, attr: any = {}, ...desc:
       (elem as any)[name] = value;
     }
   }
+  const created = buildCreated(elem);
+  created.with(...desc);
 
-  for (const child of desc)
-  {
-    if (child && child.constructor.name.startsWith("HTML"))
-    {
-      elem.append(child as HTMLElement);
-    }
-    else
-    {
-      elem.append(String(child));
-    }
-  }
-
-  return buildCreated(elem);
+  return created;
 }
 
 type ContainerChild = Container<any, any> | HTMLElement | Created<HTMLElement> | [HTMLElement | Created<HTMLElement>, ContainerDecl];
